@@ -2,12 +2,73 @@ import pandas as pd
 import streamlit as st
 from sklearn.datasets import load_diabetes
 from sklearn.ensemble import RandomForestRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
 
 # Page Layout
 
 st.set_page_config(page_title="First Streamlit Project", layout="wide")
+
+
+def build_model(df):
+    X = df.iloc[:, :-1]
+    y = df.iloc[:, -1]
+
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=(100 - split_size) / 100
+    )
+
+    st.markdown("**1.2. Data splits**")
+    st.write("Training set")
+    st.info(X_train.shape)
+    st.write("Test set")
+    st.info(X_test.shape)
+
+    st.markdown("**1.3. Variable details**:")
+    st.write("X variable")
+    st.info(list(X.columns))
+    st.write("Y variable")
+    st.info(y.name)
+
+    rf = RandomForestRegressor(
+        n_estimators=parameter_n_estimators,
+        random_state=parameter_random_state,
+        criterion=parameter_criterion,
+        min_samples_split=parameter_min_samples_split,
+        min_samples_leaf=parameter_min_samples_leaf,
+        bootstrap=parameter_bootstrap,
+        oob_score=parameter_oob_score,
+        n_jobs=parameter_n_jobs,
+    )
+
+    rf.fit(X_train, y_train)
+
+    st.subheader("2.Model Performance")
+    st.markdown("**2.1. Training set**")
+    y_pred_train = rf.predict(X_train)
+    st.write("Coefficient of determination ($R^2$):")
+    st.info(r2_score(y_train, y_pred_train))
+
+    st.write(f"Error {parameter_metric}:")
+
+    if parameter_metric == "mse":
+        st.info(mean_squared_error(y_train, y_pred_train))
+    elif parameter_metric == "mae":
+        st.info(mean_absolute_error(y_train, y_pred_train))
+
+    st.markdown("**2.2. Test set**")
+    Y_pred_test = rf.predict(X_test)
+    st.write("Coefficient of determination ($R^2$):")
+    st.info(r2_score(y_test, Y_pred_test))
+
+    st.write(f"Error {parameter_metric}:")
+    if parameter_metric == "mse":
+        st.info(mean_squared_error(y_test, Y_pred_test))
+    elif parameter_metric == "mae":
+        st.info(mean_absolute_error(y_test, Y_pred_test))
+
+    st.subheader("3. Model Parameters")
+    st.write(rf.get_params())
 
 
 st.write("""
@@ -50,11 +111,16 @@ with st.sidebar.subheader("2.1 Learning Parameters"):
         2,
         1,
     )
+    parameter_criterion = st.sidebar.selectbox(
+        "Quality of a split (Criterion)",
+        options=["squared_error", "absolute_error", "friedman_mse", "poisson"],
+    )
+
     with st.sidebar.subheader("2.2. General Parameters"):
         parameter_random_state = st.sidebar.slider(
             "Seed number (random_state)", 0, 1000, 42, 1
         )
-        parameter_criterion = st.sidebar.selectbox(
+        parameter_metric = st.sidebar.selectbox(
             "Performance measure (criterion)", options=["mse", "mae"]
         )
         parameter_bootstrap = st.sidebar.selectbox(
@@ -70,3 +136,22 @@ with st.sidebar.subheader("2.1 Learning Parameters"):
 
 
 st.subheader("1.Dataset")
+
+
+if uploaded_file is not None:
+    df = pd.read_csv(uploaded_file)
+    st.markdown("**1.1. Glimpse of dataset**")
+    st.write(df)
+    build_model(df)
+else:
+    st.info("Awaiting for CSV file to be uploaded.")
+    if st.button("Press to use Example Dataset"):
+        diabetes = load_diabetes()
+        X = pd.DataFrame(diabetes.data, columns=diabetes.feature_names)
+        Y = pd.Series(diabetes.target, name="response")
+        df = pd.concat([X, Y], axis=1)
+
+        st.markdown("The Diabetes dataset is used as the example.")
+        st.write(df.head(5))
+
+        build_model(df)
