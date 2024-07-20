@@ -1,4 +1,5 @@
 import pandas as pd
+import plotly.express as px
 import streamlit as st
 from sklearn.datasets import load_diabetes
 from sklearn.ensemble import RandomForestRegressor
@@ -57,18 +58,43 @@ def build_model(df):
         st.info(mean_absolute_error(y_train, y_pred_train))
 
     st.markdown("**2.2. Test set**")
-    Y_pred_test = rf.predict(X_test)
+    y_pred_test = rf.predict(X_test)
     st.write("Coefficient of determination ($R^2$):")
-    st.info(r2_score(y_test, Y_pred_test))
+    st.info(r2_score(y_test, y_pred_test))
 
     st.write(f"Error {parameter_metric}:")
     if parameter_metric == "mse":
-        st.info(mean_squared_error(y_test, Y_pred_test))
+        st.info(mean_squared_error(y_test, y_pred_test))
     elif parameter_metric == "mae":
-        st.info(mean_absolute_error(y_test, Y_pred_test))
+        st.info(mean_absolute_error(y_test, y_pred_test))
 
     st.subheader("3. Model Parameters")
     st.write(rf.get_params())
+
+    st.subheader("4. Feature Importance")
+    feature_importance = pd.DataFrame(
+        {"feature": X.columns, "importance": rf.feature_importances_}
+    ).sort_values(by="importance", ascending=False)
+    fig_importance = px.bar(
+        feature_importance,
+        x="importance",
+        y="feature",
+        orientation="h",
+        title="Feature Importance",
+    )
+    st.plotly_chart(fig_importance)
+
+    st.subheader("5. Error Plots")
+    error_train = y_train - y_pred_train
+    error_test = y_test - y_pred_test
+
+    fig_train_error = px.histogram(
+        error_train, nbins=30, title="Training Error Distribution"
+    )
+    fig_test_error = px.histogram(error_test, nbins=30, title="Test Error Distribution")
+
+    st.plotly_chart(fig_train_error)
+    st.plotly_chart(fig_test_error)
 
 
 st.write("""
